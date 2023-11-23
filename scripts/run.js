@@ -1,63 +1,122 @@
-const {ethers} = require("hardhat");
+const {ethers} = require('hardhat');
 
 const main = async () => {
-  const [owner, randomPerson] = await hre.ethers.getSigners();
-  const waveContractFactory = await hre.ethers.getContractFactory("WavePortal");
-  const waveContract = await waveContractFactory.deploy({
-    value: hre.ethers.utils.parseEther("0.1"),
-  });
-  await waveContract.deployed();
-
-  //console.log("Contract deployed to:", waveContract.address);
+  const [owner, user1, user2] = await ethers.getSigners();
   //console.log("Contract deployed by:", owner.address);
+  //deploy ERC20 -------------------------------
+  const tokenContractFactory = await ethers.getContractFactory('MyToken');
+  const tokenContract = await tokenContractFactory.deploy({
+    // value: hre.ethers.utils.parseEther("0.1"),
+  });
+  await tokenContract.deployed();
+  console.log('token Contract deployed to : ', tokenContract.address);
 
-  let waveCount;
-  let allWaves;
+  //deploy Escrow -------------------------------
+  const escrowContractFactory = await ethers.getContractFactory('MyEscrow');
+  const escrowContract = await escrowContractFactory.deploy(
+    tokenContract.address
+  );
+  await escrowContract.deployed();
+  console.log('escrow Contract deployed to : ', escrowContract.address);
 
-  // let contractBalance = await hre.ethers.provider.getBalance(
-  //   waveContract.address
-  // );
-  // console.log("contractBalance", hre.ethers.utils.formatEther(contractBalance));
+  //transfer token -------------------------------
+  let txn = await tokenContract.transfer(tokenContract.address, 10000000);
+  let receipt = await txn.wait();
+  txn = await tokenContract.transfer(user1.address, 100);
+  receipt = await txn.wait();
+  txn = await tokenContract.transfer(user2.address, 200);
+  receipt = await txn.wait();
+  // console.log("token tranfer receipt:", receipt);
+  // console.log("token tranfer gas used:", receipt.gasUsed);
 
-  //waveCount = await waveContract.getWaveCount();
-  //console.log("waveCount : ", waveCount.toString());
+  //check balance
+  const user1_balance = await tokenContract.balanceOf(user1.address);
+  console.log('balance of user1 : ', user1_balance);
 
-  let waveTxn = await waveContract.wave("Heeeeelllllooooo");
-  let receipt = await waveTxn.wait();
-  console.log(receipt)
-  console.log(receipt.events)
-  console.log(receipt.events.args);
+  //user approve escrow before deposit
+  txn = await tokenContract.connect(user1).approve(escrowContract.address, 100);
+  receipt = await txn.wait();
+  txn = await tokenContract.connect(user2).approve(escrowContract.address, 200);
+  receipt = await txn.wait();
+
+  console.log(
+    '🚀 -----------------------------------------------------------------------🚀'
+  );
+  //user1 deposit 50
+  txn = await escrowContract.connect(user1).deposit_DD(50);
+  receipt = await txn.wait();
+  console.log(' gas used:', receipt.gasUsed);
+  receipt = await escrowContract.connect(user1).depositsOf_DD();
+  console.log('user1 deposit amounts : ', receipt);
+  console.log(
+    '🚀 -----------------------------------------------------------------------🚀'
+  );
+  //user2 deposit 100
+  txn = await escrowContract.connect(user2).deposit_DD(100);
+  receipt = await txn.wait();
+  receipt = await escrowContract.connect(user2).depositsOf_DD();
+  console.log('user2 deposit amounts : ', receipt);
+  console.log(
+    '🚀 -----------------------------------------------------------------------🚀'
+  );
+  //user1 deposit 50 again
+  txn = await escrowContract.connect(user1).deposit_DD(50);
+  receipt = await txn.wait();
+  receipt = await escrowContract.connect(user1).depositsOf_DD();
+  console.log('user1 deposit amounts : ', receipt);
+  console.log(
+    '🚀 -----------------------------------------------------------------------🚀'
+  );
+  //user2 deposit 100 again
+  txn = await escrowContract.connect(user2).deposit_DD(100);
+  receipt = await txn.wait();
+  receipt = await escrowContract.connect(user2).depositsOf_DD();
+  console.log('user2 deposit amounts : ', receipt);
 
 
-  // waveContract.on("waveEvent",(from, message, time)=> {
-  //   console.log(from,message,time);
+  // txn = await escrowContract.
+
+  // let chatCount;
+  // let allChats;
+
+  // chatContract.on("chatEvent", (index, from, to, message, time) => {
+  //   console.log(index, from, to, message, time);
   // });
-  //waveCount = await waveContract.getWaveCount();
-  //console.log("waveCount : ", waveCount.toString());
 
-  // contractBalance = await hre.ethers.provider.getBalance(waveContract.address);
-  // console.log("contractBalance", hre.ethers.utils.formatEther(contractBalance));
+  // // let contractBalance = await hre.ethers.provider.getBalance(
+  // //   waveContract.address
+  // // );
+  // // console.log("contractBalance", hre.ethers.utils.formatEther(contractBalance));
 
-  // allWaves = await waveContract.getAllWaves();
-  // console.log(allWaves);
+  // //waveCount = await waveContract.getWaveCount();
+  // //console.log("waveCount : ", waveCount.toString());
 
+  // let chatTxn = await chatContract.chat(
+  //   randomPerson.address,
+  //   "Heeeeelllllooooo"
+  // );
+  // let receipt = await chatTxn.wait();
+  // console.log("receipt", receipt);
+  // console.log("receipt-events", receipt.events);
+  // console.log("receipt.events.args", receipt.events[0].args);
+  // console.log("receipt.events.blockHash", receipt.events[0].blockHash);
 
-  // for (let i = 0; i < 10; i++) {
-  //   waveTxn = await waveContract.connect(randomPerson).wave("let me win!");
-  //   await waveTxn.wait();
-  //   contractBalance = await hre.ethers.provider.getBalance(
-  //     waveContract.address
-  //   );
-  //   console.log(
-  //     "contractBalance",
-  //     hre.ethers.utils.formatEther(contractBalance)
-  //   );
-  // }
+  // chatTxn = await chatContract.chat(randomPerson.address, "2");
+  // receipt = await chatTxn.wait();
+  // chatTxn = await chatContract.chat(randomPerson.address, "3");
+  // receipt = await chatTxn.wait();
+  // chatTxn = await chatContract.chat(randomPerson.address, "4");
+  // receipt = await chatTxn.wait();
 
-  // allWaves = await waveContract.getAllWaves();
-  // console.log(allWaves);
+  // chatTxn = await chatContract.getChatCount();
+  // // receipt = await chatTxn.wait();
+  // // console.log("getChatCount:" ,receipt);
+  // console.log("getChatCount:", chatTxn);
+  // chatTxn = await chatContract.getAllChats();
+  // // receipt = await chatTxn.wait();
+  // // console.log("getAllChats:", receipt);
+  // console.log("getAllChats:", chatTxn);
 };
-
 const runMain = async () => {
   try {
     await main();
